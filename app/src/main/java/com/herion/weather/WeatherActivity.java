@@ -319,7 +319,7 @@ public class WeatherActivity extends AppCompatActivity {
             setWeatherDistrict(district);
 
         }
-
+        
 
         // 测试方法,可删除
         public void fangfa(String province,String city,String district,double latitude,double longitude) {
