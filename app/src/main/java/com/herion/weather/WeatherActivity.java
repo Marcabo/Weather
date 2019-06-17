@@ -110,6 +110,23 @@ public class WeatherActivity extends AppCompatActivity {
         navButton = (Button) findViewById(R.id.nav_button);
 
 
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        String weatherString = prefs.getString("weather", null);
+
+        Log.d("AAAAAA", "onCreate2: " + weatherString);
+        if (weatherString != null) {
+            // 有缓存时直接解析天气数据
+            Weather weather = Utility.handleWeatherResponse(weatherString);
+            mWeatherId = weather.basic.weatherId;
+            showWeatherInfo(weather);
+        } else {
+            // 无缓存时去服务器查询天气
+            mWeatherId = getIntent().getStringExtra("weather_id");
+            weatherLayout.setVisibility(View.INVISIBLE);
+            requestWeather("CN101010100");
+        }
+
+
         mLocationClient = new LocationClient(getApplicationContext());
         mLocationClient.registerLocationListener(myListener);
 
@@ -119,34 +136,31 @@ public class WeatherActivity extends AppCompatActivity {
         mLocationClient.start();
 
 
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        String weatherString = prefs.getString("weather", null);
 
-//        if (weatherString != null) {
-//            // 有缓存时直接解析天气数据
-//            Weather weather = Utility.handleWeatherResponse(weatherString);
-//            mWeatherId = weather.basic.weatherId;
-//            showWeatherInfo(weather);
-//        } else {
-//            // 无缓存时去服务器查询天气
-//            mWeatherId = getIntent().getStringExtra("weather_id");
-//            weatherLayout.setVisibility(View.INVISIBLE);
-//            requestWeather("CN101010100");
-//        }
         weatherDistrict = prefs.getString("weatherDistrict",null);
-        mWeatherId = prefs.getString("weatherId",null);
+        if(mWeatherId == null) {
+            mWeatherId = prefs.getString("weatherId",null);
+        }
+
 
         weatherLayout.setVisibility(View.INVISIBLE);
         Log.d("AAAA", "onCreate: " + weatherDistrict);
         cntwoid(weatherDistrict);
         Log.d("CCCC", "onCreate: " + mWeatherId);
-        requestWeather("CN101010100");
+
         Log.d("AAAAA","fdf" + weatherDistrict);
+
 
         swipeRefresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
+                SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(WeatherActivity.this);
+
+                if(mWeatherId == null) {
+                    mWeatherId = prefs.getString("weatherId",null);
+                }
                 requestWeather(mWeatherId);
+                Log.d("CCCCCC", "onRefresh: " + mWeatherId);
             }
         });
         navButton.setOnClickListener(new View.OnClickListener() {
@@ -176,7 +190,7 @@ public class WeatherActivity extends AppCompatActivity {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        Log.d("AAAAA", "run: " + weather.status);
+//                        Log.d("AAAAA", "run: " + weather.status);
                         if (weather != null && "ok".equals(weather.status)) {
                             SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(WeatherActivity.this).edit();
                             editor.putString("weather", responseText);
@@ -221,7 +235,7 @@ public class WeatherActivity extends AppCompatActivity {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        Glide.with(WeatherActivity.this).load(bingPic).into(bingPicImg);
+                        Glide.with(getApplicationContext()).load(bingPic).into(bingPicImg);
                     }
                 });
             }
@@ -289,6 +303,8 @@ public class WeatherActivity extends AppCompatActivity {
                 String responseText = response.body().string();
                 Log.d("cccccc", "onResponse: " + responseText);
                 mWeatherId = Utility.handleWeatherIdResponse(responseText);
+
+                requestWeather(mWeatherId);
                 Log.d("cccccc", "onResponse1: " + mWeatherId);
                 SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(WeatherActivity.this).edit();
                 editor.putString("weatherId",mWeatherId);
@@ -309,6 +325,13 @@ public class WeatherActivity extends AppCompatActivity {
             String district = location.getDistrict();   //获取地区信息,这里是我们需要的
             //fangfa(province,city,district,latitude,longitude);
 
+            //设置获取到的城市标题
+            titleCity.setText(city);
+
+            //把城市名字转换成id
+            cntwoid(city);
+
+
             SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(WeatherActivity.this).edit();
             editor.putString("weatherDistrict", city);
             editor.apply();
@@ -319,7 +342,7 @@ public class WeatherActivity extends AppCompatActivity {
             setWeatherDistrict(district);
 
         }
-        
+
 
         // 测试方法,可删除
         public void fangfa(String province,String city,String district,double latitude,double longitude) {
